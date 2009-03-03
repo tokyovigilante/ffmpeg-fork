@@ -1,6 +1,6 @@
 /*
  * UDP prototype streaming system
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  *
  * This file is part of FFmpeg.
  *
@@ -20,14 +20,19 @@
  */
 
 /**
- * @file udp.c
+ * @file libavformat/udp.c
  * UDP protocol
  */
 
+#define _BSD_SOURCE     /* Needed for using struct ip_mreq with recent glibc */
 #include "avformat.h"
 #include <unistd.h>
 #include "network.h"
 #include "os_support.h"
+#if HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+#include <sys/time.h>
 
 #ifndef IPV6_ADD_MEMBERSHIP
 #define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
@@ -40,13 +45,18 @@
 #define IN6_IS_ADDR_MULTICAST(a) (((uint8_t *) (a))[0] == 0xff)
 #endif
 
+#ifndef MSG_DONTWAIT 
+#define MSG_DONTWAIT 0x00//0x40
+#endif
+
 typedef struct {
     int udp_fd;
     int ttl;
+    int buffer_size;
     int is_multicast;
     int local_port;
     int reuse_socket;
-#ifndef CONFIG_IPV6
+#if !CONFIG_IPV6
     struct sockaddr_in dest_addr;
 #else
     struct sockaddr_storage dest_addr;
@@ -66,7 +76,7 @@ static int udp_set_multicast_ttl(int sockfd, int mcastTTL, struct sockaddr *addr
         }
     }
 #endif
-#ifdef CONFIG_IPV6
+#if CONFIG_IPV6
     if (addr->sa_family == AF_INET6) {
         if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &mcastTTL, sizeof(mcastTTL)) < 0) {
             av_log(NULL, AV_LOG_ERROR, "setsockopt(IPV6_MULTICAST_HOPS): %s\n", strerror(errno));
@@ -90,7 +100,7 @@ static int udp_join_multicast_group(int sockfd, struct sockaddr *addr) {
         }
     }
 #endif
-#ifdef CONFIG_IPV6
+#if CONFIG_IPV6
     if (addr->sa_family == AF_INET6) {
         struct ipv6_mreq mreq6;
 
@@ -118,7 +128,7 @@ static int udp_leave_multicast_group(int sockfd, struct sockaddr *addr) {
         }
     }
 #endif
-#ifdef CONFIG_IPV6
+#if CONFIG_IPV6
     if (addr->sa_family == AF_INET6) {
         struct ipv6_mreq mreq6;
 
@@ -133,7 +143,7 @@ static int udp_leave_multicast_group(int sockfd, struct sockaddr *addr) {
     return 0;
 }
 
-#ifdef CONFIG_IPV6
+#if CONFIG_IPV6
 static struct addrinfo* udp_ipv6_resolve_host(const char *hostname, int port, int type, int family, int flags) {
     struct addrinfo hints, *res = 0;
     int error;
@@ -331,12 +341,12 @@ int udp_get_file_handle(URLContext *h)
 static int udp_open(URLContext *h, const char *uri, int flags)
 {
     char hostname[1024];
-    int port, udp_fd = -1, tmp;
+    int port, udp_fd = -1, tmp, bind_ret = -1;
     UDPContext *s = NULL;
     int is_output;
     const char *p;
     char buf[256];
-#ifndef CONFIG_IPV6
+#if !CONFIG_IPV6
     struct sockaddr_in my_addr;
 #else
     struct sockaddr_storage my_addr;
@@ -348,12 +358,17 @@ static int udp_open(URLContext *h, const char *uri, int flags)
 
     is_output = (flags & URL_WRONLY);
 
+    if(!ff_network_init())
+        return AVERROR(EIO);
+
     s = av_mallocz(sizeof(UDPContext));
     if (!s)
         return AVERROR(ENOMEM);
 
     h->priv_data = s;
     s->ttl = 16;
+    s->buffer_size = is_output ? UDP_TX_BUF_SIZE : UDP_MAX_PKT_SIZE;
+
     p = strchr(uri, '?');
     if (p) {
         s->reuse_socket = find_info_tag(buf, sizeof(buf), "reuse", p);
@@ -365,6 +380,9 @@ static int udp_open(URLContext *h, const char *uri, int flags)
         }
         if (find_info_tag(buf, sizeof(buf), "pkt_size", p)) {
             h->max_packet_size = strtol(buf, NULL, 10);
+        }
+        if (find_info_tag(buf, sizeof(buf), "buffer_size", p)) {
+            s->buffer_size = strtol(buf, NULL, 10);
         }
     }
 
@@ -380,9 +398,6 @@ static int udp_open(URLContext *h, const char *uri, int flags)
         udp_set_remote_url(h, uri);
     }
 
-    if(!ff_network_init())
-        return AVERROR(EIO);
-
     if (s->is_multicast && !(h->flags & URL_WRONLY))
         s->local_port = port;
     udp_fd = udp_socket_create(s, &my_addr, &len);
@@ -394,7 +409,13 @@ static int udp_open(URLContext *h, const char *uri, int flags)
             goto fail;
 
     /* the bind is needed to give a port to the socket now */
-    if (bind(udp_fd,(struct sockaddr *)&my_addr, len) < 0)
+    /* if multicast, try the multicast address bind first */
+    if (s->is_multicast && !(h->flags & URL_WRONLY)) {
+        bind_ret = bind(udp_fd,(struct sockaddr *)&s->dest_addr, len);
+    }
+    /* bind to the local address if not multicast or if the multicast
+     * bind failed */
+    if (bind_ret < 0 && bind(udp_fd,(struct sockaddr *)&my_addr, len) < 0)
         goto fail;
 
     len = sizeof(my_addr);
@@ -415,7 +436,7 @@ static int udp_open(URLContext *h, const char *uri, int flags)
 
     if (is_output) {
         /* limit the tx buf size to limit latency */
-        tmp = UDP_TX_BUF_SIZE;
+        tmp = s->buffer_size;
         if (setsockopt(udp_fd, SOL_SOCKET, SO_SNDBUF, &tmp, sizeof(tmp)) < 0) {
             av_log(NULL, AV_LOG_ERROR, "setsockopt(SO_SNDBUF): %s\n", strerror(errno));
             goto fail;
@@ -423,8 +444,12 @@ static int udp_open(URLContext *h, const char *uri, int flags)
     } else {
         /* set udp recv buffer size to the largest possible udp packet size to
          * avoid losing data on OSes that set this too low by default. */
-        tmp = UDP_MAX_PKT_SIZE;
-        setsockopt(udp_fd, SOL_SOCKET, SO_RCVBUF, &tmp, sizeof(tmp));
+        tmp = s->buffer_size;
+        if (setsockopt(udp_fd, SOL_SOCKET, SO_RCVBUF, &tmp, sizeof(tmp)) < 0) {
+            av_log(NULL, AV_LOG_WARNING, "setsockopt(SO_RECVBUF): %s\n", strerror(errno));
+        }
+        /* make the socket non-blocking */
+        ff_socket_nonblock(udp_fd, 1);
     }
 
     s->udp_fd = udp_fd;
@@ -440,8 +465,22 @@ static int udp_read(URLContext *h, uint8_t *buf, int size)
 {
     UDPContext *s = h->priv_data;
     int len;
+    fd_set rfds;
+    int ret;
+    struct timeval tv;
 
     for(;;) {
+        if (url_interrupt_cb())
+            return AVERROR(EINTR);
+        FD_ZERO(&rfds);
+        FD_SET(s->udp_fd, &rfds);
+        tv.tv_sec = 0;
+        tv.tv_usec = 100 * 1000;
+        ret = select(s->udp_fd + 1, &rfds, NULL, NULL, &tv);
+        if (ret < 0)
+            return AVERROR(EIO);
+        if (!(ret > 0 && FD_ISSET(s->udp_fd, &rfds)))
+            continue;
         len = recv(s->udp_fd, buf, size, 0);
         if (len < 0) {
             if (ff_neterrno() != FF_NETERROR(EAGAIN) &&

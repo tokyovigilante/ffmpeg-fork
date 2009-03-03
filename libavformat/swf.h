@@ -1,7 +1,7 @@
 /*
  * Flash Compatible Streaming Format common header.
- * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2003 Tinic Uro.
+ * Copyright (c) 2000 Fabrice Bellard
+ * Copyright (c) 2003 Tinic Uro
  *
  * This file is part of FFmpeg.
  *
@@ -20,11 +20,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef FFMPEG_SWF_H
-#define FFMPEG_SWF_H
+#ifndef AVFORMAT_SWF_H
+#define AVFORMAT_SWF_H
 
 #include "libavutil/fifo.h"
 #include "avformat.h"
+#include "avio.h"
 #include "riff.h"    /* for CodecTag */
 
 /* should have a generic way to indicate probable size */
@@ -65,9 +66,9 @@
 
 typedef struct {
     int audio_stream_index;
-    offset_t duration_pos;
-    offset_t tag_pos;
-
+    int64_t duration_pos;
+    int64_t tag_pos;
+    int64_t vframes_pos;
     int samples_per_frame;
     int sound_samples;
     int swf_frame_number;
@@ -93,4 +94,4 @@ static const AVCodecTag swf_audio_codec_tags[] = {
     {0, 0},
 };
 
-#endif /* FFMPEG_SWF_H */
+#endif /* AVFORMAT_SWF_H */

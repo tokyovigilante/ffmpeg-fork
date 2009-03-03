@@ -1,6 +1,6 @@
 /*
  * MPEG1/2 demuxer
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  *
  * This file is part of FFmpeg.
  *
@@ -83,8 +83,8 @@ static int mpegps_probe(AVProbeData *p)
             if(code == SYSTEM_HEADER_START_CODE) sys++;
             else if(code == PRIVATE_STREAM_1)    priv1++;
             else if(code == PACK_START_CODE)     pspack++;
-            else if((code & 0xf0) == VIDEO_ID && pes) vid++;
-            else if((code & 0xe0) == AUDIO_ID && pes) audio++;
+            else if((code & 0xf0) == VIDEO_ID &&  pes) vid++;
+            else if((code & 0xe0) == AUDIO_ID &&  pes) audio++;
 
             else if((code & 0xf0) == VIDEO_ID && !pes) invalid++;
             else if((code & 0xe0) == AUDIO_ID && !pes) invalid++;
@@ -99,7 +99,7 @@ static int mpegps_probe(AVProbeData *p)
         return AVPROBE_SCORE_MAX/2+2; // +1 for .mpg
     if(priv1 + vid + audio > invalid && (priv1+vid+audio)*9 <= pspack*10)
         return AVPROBE_SCORE_MAX/2+2; // +1 for .mpg
-    if((!!vid ^ !!audio) && (audio+vid > 1) && !sys && !pspack && p->buf_size>2048) /* PES stream */
+    if((!!vid ^ !!audio) && (audio > 4 || vid > 1) && !sys && !pspack && p->buf_size>2048) /* PES stream */
         return AVPROBE_SCORE_MAX/2+2;
 
     //02-Penguin.flac has sys:0 priv1:0 pspack:0 vid:0 audio:1
@@ -227,8 +227,8 @@ static long mpegps_psm_parse(MpegDemuxContext *m, ByteIOContext *pb)
 
     /* at least one es available? */
     while (es_map_length >= 4){
-        unsigned char type = get_byte(pb);
-        unsigned char es_id = get_byte(pb);
+        unsigned char type      = get_byte(pb);
+        unsigned char es_id     = get_byte(pb);
         uint16_t es_info_length = get_be16(pb);
         /* remember mapping from stream id to stream type */
         m->psm_es_type[es_id] = type;
@@ -425,13 +425,22 @@ static int mpegps_read_packet(AVFormatContext *s,
 {
     MpegDemuxContext *m = s->priv_data;
     AVStream *st;
-    int len, startcode, i, type, codec_id = 0, es_type;
+    int len, startcode, i, es_type;
+    enum CodecID codec_id = CODEC_ID_NONE;
+    enum CodecType type;
     int64_t pts, dts, dummy_pos; //dummy_pos is needed for the index building to work
+    uint8_t dvdaudio_substream_type;
 
  redo:
     len = mpegps_read_pes_header(s, &dummy_pos, &startcode, &pts, &dts);
     if (len < 0)
         return len;
+
+    if(startcode == 0x1bd) {
+        dvdaudio_substream_type = get_byte(s->pb);
+        url_fskip(s->pb, 3);
+        len -= 4;
+    }
 
     /* now find stream */
     for(i=0;i<s->nb_streams;i++) {
@@ -441,7 +450,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     }
 
     es_type = m->psm_es_type[startcode & 0xff];
-    if(es_type > 0){
+    if(es_type > 0 && es_type != STREAM_TYPE_PRIVATE_DATA){
         if(es_type == STREAM_TYPE_VIDEO_MPEG1){
             codec_id = CODEC_ID_MPEG2VIDEO;
             type = CODEC_TYPE_VIDEO;
@@ -475,7 +484,7 @@ static int mpegps_read_packet(AVFormatContext *s,
         if(!memcmp(buf, avs_seqh, 4) && (buf[6] != 0 || buf[7] != 1))
             codec_id = CODEC_ID_CAVS;
         else
-            codec_id = CODEC_ID_MPEG2VIDEO;
+            codec_id = CODEC_ID_PROBE;
         type = CODEC_TYPE_VIDEO;
     } else if (startcode >= 0x1c0 && startcode <= 0x1df) {
         type = CODEC_TYPE_AUDIO;
@@ -483,7 +492,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     } else if (startcode >= 0x80 && startcode <= 0x87) {
         type = CODEC_TYPE_AUDIO;
         codec_id = CODEC_ID_AC3;
-    } else if ((startcode >= 0x88 && startcode <= 0x8f)
+    } else if (  ( startcode >= 0x88 && startcode <= 0x8f)
                ||( startcode >= 0x98 && startcode <= 0x9f)) {
         /* 0x90 - 0x97 is reserved for SDDS in DVD specs */
         type = CODEC_TYPE_AUDIO;
@@ -505,6 +514,19 @@ static int mpegps_read_packet(AVFormatContext *s,
     } else if (startcode >= 0xfd55 && startcode <= 0xfd5f) {
         type = CODEC_TYPE_VIDEO;
         codec_id = CODEC_ID_VC1;
+    } else if (startcode == 0x1bd) {
+        // check dvd audio substream type
+        type = CODEC_TYPE_AUDIO;
+        switch(dvdaudio_substream_type & 0xe0) {
+        case 0xa0:  codec_id = CODEC_ID_PCM_DVD;
+                    break;
+        case 0x80:  if((dvdaudio_substream_type & 0xf8) == 0x88)
+                         codec_id = CODEC_ID_DTS;
+                    else codec_id = CODEC_ID_AC3;
+                    break;
+        default:    av_log(s, AV_LOG_ERROR, "Unknown 0x1bd sub-stream\n");
+                    goto skip;
+        }
     } else {
     skip:
         /* skip packet */
@@ -522,7 +544,8 @@ static int mpegps_read_packet(AVFormatContext *s,
  found:
     if(st->discard >= AVDISCARD_ALL)
         goto skip;
-    if (startcode >= 0xa0 && startcode <= 0xaf) {
+    if ((startcode >= 0xa0 && startcode <= 0xaf) ||
+        (startcode == 0x1bd && ((dvdaudio_substream_type & 0xe0) == 0xa0))) {
         int b1, freq;
 
         /* for LPCM, we just skip the header and consider it is raw
@@ -536,13 +559,13 @@ static int mpegps_read_packet(AVFormatContext *s,
         freq = (b1 >> 4) & 3;
         st->codec->sample_rate = lpcm_freq_tab[freq];
         st->codec->channels = 1 + (b1 & 7);
-        st->codec->bits_per_sample = 16 + ((b1 >> 6) & 3) * 4;
+        st->codec->bits_per_coded_sample = 16 + ((b1 >> 6) & 3) * 4;
         st->codec->bit_rate = st->codec->channels *
                               st->codec->sample_rate *
-                              st->codec->bits_per_sample;
-        if (st->codec->bits_per_sample == 16)
+                              st->codec->bits_per_coded_sample;
+        if (st->codec->bits_per_coded_sample == 16)
             st->codec->codec_id = CODEC_ID_PCM_S16BE;
-        else if (st->codec->bits_per_sample == 28)
+        else if (st->codec->bits_per_coded_sample == 28)
             return AVERROR(EINVAL);
     }
     av_new_packet(pkt, len);
@@ -555,11 +578,6 @@ static int mpegps_read_packet(AVFormatContext *s,
            pkt->stream_index, pkt->pts / 90000.0, pkt->dts / 90000.0, pkt->size);
 #endif
 
-    return 0;
-}
-
-static int mpegps_read_close(AVFormatContext *s)
-{
     return 0;
 }
 
@@ -604,8 +622,8 @@ AVInputFormat mpegps_demuxer = {
     mpegps_probe,
     mpegps_read_header,
     mpegps_read_packet,
-    mpegps_read_close,
+    NULL,
     NULL, //mpegps_read_seek,
     mpegps_read_dts,
-    .flags = AVFMT_SHOW_IDS,
+    .flags = AVFMT_SHOW_IDS|AVFMT_TS_DISCONT,
 };

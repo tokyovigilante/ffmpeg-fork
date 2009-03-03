@@ -20,7 +20,7 @@
  */
 
 /**
- * @file kmvc.c
+ * @file libavcodec/kmvc.c
  * Karl Morton's Video Codec decoder
  */
 
@@ -411,5 +411,5 @@ AVCodec kmvc_decoder = {
     NULL,
     decode_end,
     decode_frame,
-    .long_name = "Karl Morton's video codec",
+    .long_name = NULL_IF_CONFIG_SMALL("Karl Morton's video codec"),
 };

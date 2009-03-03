@@ -22,6 +22,9 @@
 #include "libavutil/avstring.h"
 #include "avformat.h"
 #include <fcntl.h>
+#if HAVE_SETMODE
+#include <io.h>
+#endif
 #include <unistd.h>
 #include <sys/time.h>
 #include <stdlib.h>
@@ -67,7 +70,7 @@ static int file_write(URLContext *h, unsigned char *buf, int size)
 }
 
 /* XXX: use llseek */
-static offset_t file_seek(URLContext *h, offset_t pos, int whence)
+static int64_t file_seek(URLContext *h, int64_t pos, int whence)
 {
     int fd = (size_t)h->priv_data;
     return lseek(fd, pos, whence);
@@ -104,7 +107,7 @@ static int pipe_open(URLContext *h, const char *filename, int flags)
             fd = 0;
         }
     }
-#ifdef O_BINARY
+#if HAVE_SETMODE
     setmode(fd, O_BINARY);
 #endif
     h->priv_data = (void *)(size_t)fd;

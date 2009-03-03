@@ -1,5 +1,5 @@
 /*
- * A very simple circular buffer FIFO implementation
+ * a very simple circular buffer FIFO implementation
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  * Copyright (c) 2006 Roman Shaposhnik
  *
@@ -51,28 +51,35 @@ int av_fifo_read(AVFifoBuffer *f, uint8_t *buf, int buf_size)
     return av_fifo_generic_read(f, buf_size, NULL, buf);
 }
 
-/**
- * Resizes a FIFO.
- */
+#if LIBAVUTIL_VERSION_MAJOR < 50
 void av_fifo_realloc(AVFifoBuffer *f, unsigned int new_size) {
+    av_fifo_realloc2(f, new_size);
+}
+#endif
+
+int av_fifo_realloc2(AVFifoBuffer *f, unsigned int new_size) {
     unsigned int old_size= f->end - f->buffer;
 
     if(old_size <= new_size){
         int len= av_fifo_size(f);
         AVFifoBuffer f2;
 
-        av_fifo_init(&f2, new_size);
+        if (av_fifo_init(&f2, new_size) < 0)
+            return -1;
         av_fifo_read(f, f2.buffer, len);
         f2.wptr += len;
         av_free(f->buffer);
         *f= f2;
     }
+    return 0;
 }
 
+#if LIBAVUTIL_VERSION_MAJOR < 50
 void av_fifo_write(AVFifoBuffer *f, const uint8_t *buf, int size)
 {
     av_fifo_generic_write(f, (void *)buf, size, NULL);
 }
+#endif
 
 int av_fifo_generic_write(AVFifoBuffer *f, void *src, int size, int (*func)(void*, void*, int))
 {
@@ -110,7 +117,7 @@ int av_fifo_generic_read(AVFifoBuffer *f, int buf_size, void (*func)(void*, void
     return 0;
 }
 
-/** discard data from the fifo */
+/** Discard data from the FIFO. */
 void av_fifo_drain(AVFifoBuffer *f, int size)
 {
     f->rptr += size;

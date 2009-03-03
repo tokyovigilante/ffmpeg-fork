@@ -18,6 +18,8 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 
 enum TargaCompr{
@@ -250,5 +252,5 @@ AVCodec targa_decoder = {
     decode_frame,
     0,
     NULL,
-    .long_name = "Truevision Targa image",
+    .long_name = NULL_IF_CONFIG_SMALL("Truevision Targa image"),
 };

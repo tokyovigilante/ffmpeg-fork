@@ -1,6 +1,6 @@
 /*
  * RTP input/output format
- * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2002 Fabrice Bellard
  *
  * This file is part of FFmpeg.
  *
@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include "network.h"
 
-#include "rtp_internal.h"
+#include "rtp.h"
 
 //#define DEBUG
 
@@ -57,8 +57,8 @@ static const struct
   {11, "L16",        CODEC_TYPE_AUDIO,   CODEC_ID_PCM_S16BE, 44100, 1},
   {12, "QCELP",      CODEC_TYPE_AUDIO,   CODEC_ID_QCELP, 8000, 1},
   {13, "CN",         CODEC_TYPE_AUDIO,   CODEC_ID_NONE, 8000, 1},
-  {14, "MPA",        CODEC_TYPE_AUDIO,   CODEC_ID_MP2, 90000, -1},
-  {14, "MPA",        CODEC_TYPE_AUDIO,   CODEC_ID_MP3, 90000, -1},
+  {14, "MPA",        CODEC_TYPE_AUDIO,   CODEC_ID_MP2, -1, -1},
+  {14, "MPA",        CODEC_TYPE_AUDIO,   CODEC_ID_MP3, -1, -1},
   {15, "G728",       CODEC_TYPE_AUDIO,   CODEC_ID_NONE, 8000, 1},
   {16, "DVI4",       CODEC_TYPE_AUDIO,   CODEC_ID_NONE, 11025, 1},
   {17, "DVI4",       CODEC_TYPE_AUDIO,   CODEC_ID_NONE, 22050, 1},

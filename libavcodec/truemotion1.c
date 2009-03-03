@@ -20,7 +20,7 @@
  */
 
 /**
- * @file truemotion1.c
+ * @file libavcodec/truemotion1.c
  * Duck TrueMotion v1 Video Decoder by
  * Alex Beregszaszi and
  * Mike Melanson (melanson@pcisys.net)
@@ -117,7 +117,7 @@ typedef struct comp_types {
 } comp_types;
 
 /* { valid for metatype }, algorithm, num of deltas, vert res, horiz res */
-static comp_types compression_types[17] = {
+static const comp_types compression_types[17] = {
     { ALGO_NOP,    0, 0, 0 },
 
     { ALGO_RGB16V, 4, 4, BLOCK_4x4 },
@@ -393,7 +393,7 @@ static int truemotion1_decode_header(TrueMotion1Context *s)
         }
     }
 
-    if (header.compression > 17) {
+    if (header.compression >= 17) {
         av_log(s->avctx, AV_LOG_ERROR, "invalid compression type (%d)\n", header.compression);
         return -1;
     }
@@ -899,5 +899,5 @@ AVCodec truemotion1_decoder = {
     truemotion1_decode_end,
     truemotion1_decode_frame,
     CODEC_CAP_DR1,
-    .long_name = "Duck TrueMotion 1.0",
+    .long_name = NULL_IF_CONFIG_SMALL("Duck TrueMotion 1.0"),
 };

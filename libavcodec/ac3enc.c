@@ -1,6 +1,6 @@
 /*
- * The simplest AC3 encoder
- * Copyright (c) 2000 Fabrice Bellard.
+ * The simplest AC-3 encoder
+ * Copyright (c) 2000 Fabrice Bellard
  *
  * This file is part of FFmpeg.
  *
@@ -20,8 +20,8 @@
  */
 
 /**
- * @file ac3enc.c
- * The simplest AC3 encoder.
+ * @file libavcodec/ac3enc.c
+ * The simplest AC-3 encoder.
  */
 //#define DEBUG
 //#define DEBUG_BITALLOC
@@ -490,7 +490,7 @@ static int compute_bit_allocation(AC3EncodeContext *s,
     uint8_t bap1[NB_BLOCKS][AC3_MAX_CHANNELS][N/2];
     int16_t psd[NB_BLOCKS][AC3_MAX_CHANNELS][N/2];
     int16_t mask[NB_BLOCKS][AC3_MAX_CHANNELS][50];
-    static int frame_bits_inc[8] = { 0, 0, 2, 2, 2, 4, 2, 4 };
+    static const int frame_bits_inc[8] = { 0, 0, 2, 2, 2, 4, 2, 4 };
 
     /* init default parameters */
     s->slow_decay_code = 2;
@@ -705,7 +705,7 @@ static av_cold int AC3_encode_init(AVCodecContext *avctx)
     return 0;
 }
 
-/* output the AC3 frame header */
+/* output the AC-3 frame header */
 static void output_frame_header(AC3EncodeContext *s, unsigned char *frame)
 {
     init_put_bits(&s->pb, frame, AC3_MAX_CODED_FRAME_SIZE);
@@ -772,7 +772,7 @@ static inline int asym_quant(int c, int e, int qbits)
     return v & ((1 << qbits)-1);
 }
 
-/* Output one audio block. There are NB_BLOCKS audio blocks in one AC3
+/* Output one audio block. There are NB_BLOCKS audio blocks in one AC-3
    frame */
 static void output_audio_block(AC3EncodeContext *s,
                                uint8_t exp_strategy[AC3_MAX_CHANNELS],
@@ -1364,5 +1364,6 @@ AVCodec ac3_encoder = {
     AC3_encode_frame,
     AC3_encode_close,
     NULL,
-    .long_name = "ATSC A/52 (AC-3, E-AC-3)",
+    .sample_fmts = (enum SampleFormat[]){SAMPLE_FMT_S16,SAMPLE_FMT_NONE},
+    .long_name = NULL_IF_CONFIG_SMALL("ATSC A/52A (AC-3)"),
 };

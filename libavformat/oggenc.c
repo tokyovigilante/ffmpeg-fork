@@ -23,6 +23,7 @@
 #include "libavcodec/xiph.h"
 #include "libavcodec/bytestream.h"
 #include "avformat.h"
+#include "internal.h"
 
 typedef struct {
     int64_t duration;
@@ -36,9 +37,9 @@ typedef struct {
     int eos;
 } OGGStreamContext;
 
-static void ogg_update_checksum(AVFormatContext *s, offset_t crc_offset)
+static void ogg_update_checksum(AVFormatContext *s, int64_t crc_offset)
 {
-    offset_t pos = url_ftell(s->pb);
+    int64_t pos = url_ftell(s->pb);
     uint32_t checksum = get_checksum(s->pb);
     url_fseek(s->pb, crc_offset, SEEK_SET);
     put_be32(s->pb, checksum);
@@ -49,7 +50,7 @@ static int ogg_write_page(AVFormatContext *s, const uint8_t *data, int size,
                           int64_t granule, int stream_index, int flags)
 {
     OGGStreamContext *oggstream = s->streams[stream_index]->priv_data;
-    offset_t crc_offset;
+    int64_t crc_offset;
     int page_segments, i;
 
     if (size >= 255*255) {
@@ -202,36 +203,27 @@ static int ogg_write_packet(AVFormatContext *s, AVPacket *pkt)
     return 0;
 }
 
-int ogg_interleave_per_granule(AVFormatContext *s, AVPacket *out, AVPacket *pkt, int flush)
+static int ogg_compare_granule(AVFormatContext *s, AVPacket *next, AVPacket *pkt)
 {
-    AVPacketList *pktl, **next_point, *this_pktl;
+    AVStream *st2 = s->streams[next->stream_index];
+    AVStream *st  = s->streams[pkt ->stream_index];
+
+    int64_t next_granule = av_rescale_q(next->pts + next->duration,
+                                        st2->time_base, AV_TIME_BASE_Q);
+    int64_t cur_granule  = av_rescale_q(pkt ->pts + pkt ->duration,
+                                        st ->time_base, AV_TIME_BASE_Q);
+    return next_granule > cur_granule;
+}
+
+static int ogg_interleave_per_granule(AVFormatContext *s, AVPacket *out, AVPacket *pkt, int flush)
+{
+    AVPacketList *pktl;
     int stream_count = 0;
     int streams[MAX_STREAMS] = {0};
     int interleaved = 0;
 
     if (pkt) {
-        AVStream *st = s->streams[pkt->stream_index];
-        this_pktl = av_mallocz(sizeof(AVPacketList));
-        this_pktl->pkt = *pkt;
-        if (pkt->destruct == av_destruct_packet)
-            pkt->destruct = NULL; // not shared -> must keep original from being freed
-        else
-            av_dup_packet(&this_pktl->pkt); // shared -> must dup
-        next_point = &s->packet_buffer;
-        while (*next_point) {
-            AVStream *st2 = s->streams[(*next_point)->pkt.stream_index];
-            AVPacket *next_pkt = &(*next_point)->pkt;
-            int64_t cur_granule, next_granule;
-            next_granule = av_rescale_q(next_pkt->pts + next_pkt->duration,
-                                        st2->time_base, AV_TIME_BASE_Q);
-            cur_granule = av_rescale_q(pkt->pts + pkt->duration,
-                                        st->time_base, AV_TIME_BASE_Q);
-            if (next_granule > cur_granule)
-                break;
-            next_point= &(*next_point)->next;
-        }
-        this_pktl->next= *next_point;
-        *next_point= this_pktl;
+        ff_interleave_add_packet(s, pkt, ogg_compare_granule);
     }
 
     pktl = s->packet_buffer;
@@ -281,7 +273,7 @@ AVOutputFormat ogg_muxer = {
     "ogg",
     NULL_IF_CONFIG_SMALL("Ogg"),
     "application/ogg",
-    "ogg",
+    "ogg,ogv",
     0,
     CODEC_ID_FLAC,
     CODEC_ID_THEORA,

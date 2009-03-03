@@ -20,7 +20,7 @@
  */
 
 /**
- * @file bethsoftvideo.c
+ * @file libavcodec/bethsoftvideo.c
  * @brief Bethesda Softworks VID Video Decoder
  * @author Nicholas Tung [ntung (at. ntung com] (2007-03)
  * @sa http://wiki.multimedia.cx/index.php?title=Bethsoft_VID
@@ -136,5 +136,5 @@ AVCodec bethsoftvid_decoder = {
     .init = bethsoftvid_decode_init,
     .close = bethsoftvid_decode_end,
     .decode = bethsoftvid_decode_frame,
-    .long_name = "Bethesda VID video",
+    .long_name = NULL_IF_CONFIG_SMALL("Bethesda VID video"),
 };

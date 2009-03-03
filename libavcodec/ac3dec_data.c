@@ -1,5 +1,5 @@
 /*
- * AC3 and E-AC3 decoder tables
+ * AC-3 and E-AC-3 decoder tables
  * Copyright (c) 2007 Bartlomiej Wolowiec <bartek.wolowiec@gmail.com>
  *
  * This file is part of FFmpeg.
@@ -20,12 +20,28 @@
  */
 
 /**
- * @file ac3dec_data.c
- * tables taken directly from AC3 spec.
+ * @file libavcodec/ac3dec_data.c
+ * tables taken directly from the AC-3 spec.
  */
 
 #include "ac3dec_data.h"
 #include "ac3.h"
+
+/**
+ * table used to ungroup 3 values stored in 5 bits.
+ * used by bap=1 mantissas and GAQ.
+ * ff_ac3_ungroup_3_in_5_bits_tab[i] = { i/9, (i%9)/3, (i%9)%3 }
+ */
+const uint8_t ff_ac3_ungroup_3_in_5_bits_tab[32][3] = {
+    { 0, 0, 0 }, { 0, 0, 1 }, { 0, 0, 2 }, { 0, 1, 0 },
+    { 0, 1, 1 }, { 0, 1, 2 }, { 0, 2, 0 }, { 0, 2, 1 },
+    { 0, 2, 2 }, { 1, 0, 0 }, { 1, 0, 1 }, { 1, 0, 2 },
+    { 1, 1, 0 }, { 1, 1, 1 }, { 1, 1, 2 }, { 1, 2, 0 },
+    { 1, 2, 1 }, { 1, 2, 2 }, { 2, 0, 0 }, { 2, 0, 1 },
+    { 2, 0, 2 }, { 2, 1, 0 }, { 2, 1, 1 }, { 2, 1, 2 },
+    { 2, 2, 0 }, { 2, 2, 1 }, { 2, 2, 2 }, { 3, 0, 0 },
+    { 3, 0, 1 }, { 3, 0, 2 }, { 3, 1, 0 }, { 3, 1, 1 }
+};
 
 const uint8_t ff_eac3_hebap_tab[64] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 8,
@@ -71,18 +87,19 @@ const int16_t ff_eac3_gaq_remap_2_4_a[9][2] = {
 /**
  * Table E3.6, Gk=2 & Gk=4, B
  * Large mantissa inverse quantization, negative mantissa remapping offsets
+ * Table values from the spec are right-shifted by 8 to simplify calculations.
  * ff_eac3_gaq_remap_3_4_b[hebap-8][Gk=2,4]
  */
-const int16_t ff_eac3_gaq_remap_2_4_b[9][2] = {
-    {  -5461, -1170},
-    { -11703, -4915},
-    { -14199, -6606},
-    { -15327, -7412},
-    { -15864, -7805},
-    { -16126, -7999},
-    { -16255, -8096},
-    { -16320, -8144},
-    { -16352, -8168}
+const int8_t ff_eac3_gaq_remap_2_4_b[9][2] = {
+    { -22,  -5 },
+    { -46, -20 },
+    { -56, -26 },
+    { -60, -29 },
+    { -62, -31 },
+    { -63, -32 },
+    { -64, -32 },
+    { -64, -32 },
+    { -64, -32 },
 };
 
 static const int16_t vq_hebap1[4][6] = {
@@ -1055,7 +1072,7 @@ static const int16_t vq_hebap7[512][6] = {
 {   3231,   -3284,   27336,    4174,   -1683,     497},
 };
 
-const int16_t (*ff_eac3_vq_hebap[8])[6] = {
+const int16_t (* const ff_eac3_mantissa_vq[8])[6] = {
     NULL,
     vq_hebap1,
     vq_hebap2,
@@ -1109,19 +1126,6 @@ const uint8_t ff_eac3_frm_expstr[32][6] = {
  */
 const uint8_t ff_eac3_default_cpl_band_struct[18] =
 { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1 };
-
-/**
- * Table E2.15 Default Spectral Extension Banding Structure
- */
-const uint8_t ff_eac3_defspxbndstrc[17] =
-{ 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-
-/**
- * Table E2.17 Default Enhanced Coupling Banding Structure
- */
-
-const uint8_t ff_eac3_defecplbndstrc[22] =
-{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1};
 
 /**
  * Table of bin locations for rematrixing bands

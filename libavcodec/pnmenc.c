@@ -1,6 +1,6 @@
 /*
  * PNM image format
- * Copyright (c) 2002, 2003 Fabrice Bellard.
+ * Copyright (c) 2002, 2003 Fabrice Bellard
  *
  * This file is part of FFmpeg.
  *
@@ -354,7 +354,7 @@ static int pam_probe(AVProbeData *pd)
 #endif
 
 
-#ifdef CONFIG_PGM_ENCODER
+#if CONFIG_PGM_ENCODER
 AVCodec pgm_encoder = {
     "pgm",
     CODEC_TYPE_VIDEO,
@@ -365,11 +365,11 @@ AVCodec pgm_encoder = {
     NULL, //encode_end,
     pnm_decode_frame,
     .pix_fmts= (enum PixelFormat[]){PIX_FMT_GRAY8, PIX_FMT_GRAY16BE, PIX_FMT_NONE},
-    .long_name= "PGM (Portable GrayMap) image",
+    .long_name= NULL_IF_CONFIG_SMALL("PGM (Portable GrayMap) image"),
 };
 #endif // CONFIG_PGM_ENCODER
 
-#ifdef CONFIG_PGMYUV_ENCODER
+#if CONFIG_PGMYUV_ENCODER
 AVCodec pgmyuv_encoder = {
     "pgmyuv",
     CODEC_TYPE_VIDEO,
@@ -380,11 +380,11 @@ AVCodec pgmyuv_encoder = {
     NULL, //encode_end,
     pnm_decode_frame,
     .pix_fmts= (enum PixelFormat[]){PIX_FMT_YUV420P, PIX_FMT_NONE},
-    .long_name= "PGMYUV (Portable GrayMap YUV) image",
+    .long_name= NULL_IF_CONFIG_SMALL("PGMYUV (Portable GrayMap YUV) image"),
 };
 #endif // CONFIG_PGMYUV_ENCODER
 
-#ifdef CONFIG_PPM_ENCODER
+#if CONFIG_PPM_ENCODER
 AVCodec ppm_encoder = {
     "ppm",
     CODEC_TYPE_VIDEO,
@@ -395,11 +395,11 @@ AVCodec ppm_encoder = {
     NULL, //encode_end,
     pnm_decode_frame,
     .pix_fmts= (enum PixelFormat[]){PIX_FMT_RGB24, PIX_FMT_NONE},
-    .long_name= "PPM (Portable PixelMap) image",
+    .long_name= NULL_IF_CONFIG_SMALL("PPM (Portable PixelMap) image"),
 };
 #endif // CONFIG_PPM_ENCODER
 
-#ifdef CONFIG_PBM_ENCODER
+#if CONFIG_PBM_ENCODER
 AVCodec pbm_encoder = {
     "pbm",
     CODEC_TYPE_VIDEO,
@@ -410,11 +410,11 @@ AVCodec pbm_encoder = {
     NULL, //encode_end,
     pnm_decode_frame,
     .pix_fmts= (enum PixelFormat[]){PIX_FMT_MONOWHITE, PIX_FMT_NONE},
-    .long_name= "PBM (Portable BitMap) image",
+    .long_name= NULL_IF_CONFIG_SMALL("PBM (Portable BitMap) image"),
 };
 #endif // CONFIG_PBM_ENCODER
 
-#ifdef CONFIG_PAM_ENCODER
+#if CONFIG_PAM_ENCODER
 AVCodec pam_encoder = {
     "pam",
     CODEC_TYPE_VIDEO,
@@ -425,6 +425,6 @@ AVCodec pam_encoder = {
     NULL, //encode_end,
     pnm_decode_frame,
     .pix_fmts= (enum PixelFormat[]){PIX_FMT_RGB24, PIX_FMT_RGB32, PIX_FMT_GRAY8, PIX_FMT_MONOWHITE, PIX_FMT_NONE},
-    .long_name= "PAM (Portable AnyMap) image",
+    .long_name= NULL_IF_CONFIG_SMALL("PAM (Portable AnyMap) image"),
 };
 #endif // CONFIG_PAM_ENCODER

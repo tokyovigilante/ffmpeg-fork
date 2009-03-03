@@ -29,6 +29,7 @@
 #include "libavformat/framehook.h"
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
+#undef fprintf
 
 static int sws_flags = SWS_BICUBIC;
 
@@ -211,7 +212,7 @@ int Configure(void **ctxp, int argc, char *argv[])
     if ( argc > 1 )
     {
         *ctxp = av_mallocz(sizeof(ContextInfo));
-        if ( ctxp != NULL && argc > 1 )
+        if ( *ctxp != NULL && argc > 1 )
         {
             ContextInfo *info = (ContextInfo *)*ctxp;
             info->rw = rwpipe_open( argc - 1, &argv[ 1 ] );
@@ -231,8 +232,8 @@ void Process(void *ctx, AVPicture *picture, enum PixelFormat pix_fmt, int width,
     AVPicture picture1;
     AVPicture picture2;
     AVPicture *pict = picture;
-    int out_width;
-    int out_height;
+    int av_uninit(out_width);
+    int av_uninit(out_height);
     int i;
     uint8_t *ptr = NULL;
     FILE *in = rwpipe_reader( ci->rw );

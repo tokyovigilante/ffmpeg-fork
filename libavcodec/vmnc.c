@@ -20,7 +20,7 @@
  */
 
 /**
- * @file vmnc.c
+ * @file libavcodec/vmnc.c
  * VMware Screen Codec (VMnc) decoder
  * As Alex Beregszaszi discovered, this is effectively RFB data dump
  */
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 
 enum EncTypes {
@@ -469,7 +470,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
     if (avcodec_check_dimensions(avctx, avctx->width, avctx->height) < 0) {
         return 1;
     }
-    c->bpp = avctx->bits_per_sample;
+    c->bpp = avctx->bits_per_coded_sample;
     c->bpp2 = c->bpp/8;
 
     switch(c->bpp){
@@ -518,6 +519,6 @@ AVCodec vmnc_decoder = {
     NULL,
     decode_end,
     decode_frame,
-    .long_name = "VMware Screen Codec / VMware Video",
+    .long_name = NULL_IF_CONFIG_SMALL("VMware Screen Codec / VMware Video"),
 };
 

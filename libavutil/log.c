@@ -20,11 +20,12 @@
  */
 
 /**
- * @file log.c
- * log.
+ * @file libavutil/log.c
+ * logging functions
  */
 
 #include "avutil.h"
+#include "log.h"
 
 int av_log_level = AV_LOG_INFO;
 
@@ -36,9 +37,8 @@ void av_log_default_callback(void* ptr, int level, const char* fmt, va_list vl)
         return;
 #undef fprintf
     if(print_prefix && avc) {
-            fprintf(stderr, "[%s @ %p]", avc->item_name(ptr), avc);
+        fprintf(stderr, "[%s @ %p]", avc->item_name(ptr), ptr);
     }
-#define fprintf please_use_av_log
 
     print_prefix= strstr(fmt, "\n") != NULL;
 

@@ -1,7 +1,7 @@
 /*
  * Flash Compatible Streaming Format muxer
- * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2003 Tinic Uro.
+ * Copyright (c) 2000 Fabrice Bellard
+ * Copyright (c) 2003 Tinic Uro
  *
  * This file is part of FFmpeg.
  *
@@ -44,7 +44,7 @@ static void put_swf_end_tag(AVFormatContext *s)
 {
     SWFContext *swf = s->priv_data;
     ByteIOContext *pb = s->pb;
-    offset_t pos;
+    int64_t pos;
     int tag_len, tag;
 
     pos = url_ftell(pb);
@@ -344,6 +344,7 @@ static int swf_write_video(AVFormatContext *s,
             /* create a new video object */
             put_swf_tag(s, TAG_VIDEOSTREAM);
             put_le16(pb, VIDEO_ID);
+            swf->vframes_pos = url_ftell(pb);
             put_le16(pb, 15000); /* hard flash player limit */
             put_le16(pb, enc->width);
             put_le16(pb, enc->height);
@@ -435,7 +436,7 @@ static int swf_write_video(AVFormatContext *s,
 }
 
 static int swf_write_audio(AVFormatContext *s,
-                           AVCodecContext *enc, const uint8_t *buf, int size)
+                           AVCodecContext *enc, uint8_t *buf, int size)
 {
     SWFContext *swf = s->priv_data;
 
@@ -495,12 +496,14 @@ static int swf_write_trailer(AVFormatContext *s)
         put_le32(pb, file_size);
         url_fseek(pb, swf->duration_pos, SEEK_SET);
         put_le16(pb, swf->video_frame_number);
+        url_fseek(pb, swf->vframes_pos, SEEK_SET);
+        put_le16(pb, swf->video_frame_number);
         url_fseek(pb, file_size, SEEK_SET);
     }
     return 0;
 }
 
-#ifdef CONFIG_SWF_MUXER
+#if CONFIG_SWF_MUXER
 AVOutputFormat swf_muxer = {
     "swf",
     NULL_IF_CONFIG_SMALL("Flash format"),
@@ -514,7 +517,7 @@ AVOutputFormat swf_muxer = {
     swf_write_trailer,
 };
 #endif
-#ifdef CONFIG_AVM2_MUXER
+#if CONFIG_AVM2_MUXER
 AVOutputFormat avm2_muxer = {
     "avm2",
     NULL_IF_CONFIG_SMALL("Flash 9 (AVM2) format"),

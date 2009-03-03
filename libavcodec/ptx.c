@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 
 typedef struct PTXContext {
@@ -114,5 +115,5 @@ AVCodec ptx_decoder = {
     ptx_decode_frame,
     0,
     NULL,
-    .long_name = "V.Flash PTX image",
+    .long_name = NULL_IF_CONFIG_SMALL("V.Flash PTX image"),
 };

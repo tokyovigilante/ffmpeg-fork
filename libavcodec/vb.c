@@ -20,7 +20,7 @@
  */
 
 /**
- * @file vb.c
+ * @file libavcodec/vb.c
  * VB Video decoder
  */
 
@@ -278,6 +278,6 @@ AVCodec vb_decoder = {
     NULL,
     decode_end,
     decode_frame,
-    .long_name = "Beam Software VB",
+    .long_name = NULL_IF_CONFIG_SMALL("Beam Software VB"),
 };
 

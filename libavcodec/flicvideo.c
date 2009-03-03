@@ -20,7 +20,7 @@
  */
 
 /**
- * @file flic.c
+ * @file libavcodec/flicvideo.c
  * Autodesk Animator FLI/FLC Video Decoder
  * by Mike Melanson (melanson@pcisys.net)
  * for more information on the .fli/.flc file format and all of its many
@@ -40,7 +40,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "libavutil/bswap.h"
+#include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 
 #define FLI_256_COLOR 4
@@ -750,5 +750,5 @@ AVCodec flic_decoder = {
     NULL,
     NULL,
     NULL,
-    .long_name = "Autodesk Animator Flic video",
+    .long_name = NULL_IF_CONFIG_SMALL("Autodesk Animator Flic video"),
 };
