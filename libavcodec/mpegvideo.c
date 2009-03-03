@@ -54,8 +54,8 @@ static void dct_unquantize_h263_intra_c(MpegEncContext *s,
 static void dct_unquantize_h263_inter_c(MpegEncContext *s,
                                   DCTELEM *block, int n, int qscale);
 
-int  XVMC_field_start(MpegEncContext*s, AVCodecContext *avctx);
-void XVMC_field_end(MpegEncContext *s);
+int  ff_xvmc_field_start(MpegEncContext*s, AVCodecContext *avctx);
+void ff_xvmc_field_end(MpegEncContext *s);
 void ff_xvmc_decode_mb(MpegEncContext *s);
 
 
@@ -941,7 +941,7 @@ alloc:
 
 #if CONFIG_MPEG_XVMC_DECODER
     if(s->avctx->xvmc_acceleration)
-        return XVMC_field_start(s, avctx);
+        return ff_xvmc_field_start(s, avctx);
 #endif
     return 0;
 }
@@ -954,7 +954,7 @@ void MPV_frame_end(MpegEncContext *s)
 #if CONFIG_MPEG_XVMC_DECODER
 //just to make sure that all data is rendered.
     if(s->avctx->xvmc_acceleration){
-        XVMC_field_end(s);
+        ff_xvmc_field_end(s);
     }else
 #endif
     if(!(s->avctx->codec->capabilities&CODEC_CAP_HWACCEL_VDPAU)
